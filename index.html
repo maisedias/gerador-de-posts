@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <title>Gerador de Post 4:5 - Estilo Twitter</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <link href="https://fonts.cdnfonts.com/css/sf-pro-display" rel="stylesheet">
+    
+    <style>
+        :root {
+            --bg-page: #f0f2f5;
+            --bg-post: #ffffff;
+            --text-main: #0f1419;
+            --text-sub: #536471;
+            --border-color: #eff3f4;
+        }
+
+        [data-theme="dark"] {
+            --bg-page: #15202b;
+            --bg-post: #000000;
+            --text-main: #e7e9ea;
+            --text-sub: #71767b;
+            --border-color: #2f3336;
+        }
+
+        body { 
+            font-family: 'SF Pro Display', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif; 
+            background: var(--bg-page); 
+            display: flex; 
+            flex-wrap: wrap;
+            justify-content: center;
+            padding: 40px; 
+            gap: 40px; 
+            color: var(--text-main); 
+            transition: background-color 0.3s;
+            margin: 0;
+        }
+        
+        .controles { 
+            width: 350px; 
+            background: white; 
+            padding: 25px; 
+            border-radius: 12px; 
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1); 
+            color: #333; 
+            height: fit-content;
+        }
+
+        .controles input, .controles textarea, .controles button { 
+            width: 100%; 
+            margin-bottom: 15px; 
+            padding: 10px; 
+            border: 1px solid #ddd; 
+            border-radius: 6px; 
+            box-sizing: border-box; 
+            font-family: inherit; 
+        }
+        
+        #export-area {
+            width: 432px; 
+            height: 540px; 
+            background: var(--bg-post);
+            display: flex; 
+            justify-content: center; 
+            align-items: center;
+            position: relative; 
+            overflow: hidden;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.15); 
+            border-radius: 8px;
+        }
+
+        .exportando {
+            border-radius: 0 !important;
+            box-shadow: none !important;
+        }
+
+        .tweet-content { 
+            width: 88%; 
+            height: 88%; 
+            display: flex;
+            flex-direction: column;
+            justify-content: center; 
+        }
+
+        .header { 
+            display: flex; 
+            align-items: center; 
+            gap: 12px; 
+            margin-bottom: 12px; 
+        }
+
+        .header img { 
+            width: 48px; 
+            height: 48px; 
+            border-radius: 50%; 
+            object-fit: cover; 
+            background-color: #ccc;
+        }
+
+        .names { flex-grow: 1; }
+        .names .nome { font-size: 16px; font-weight: 800; margin: 0; color: var(--text-main); }
+        .names .handle { font-size: 14px; color: var(--text-sub); margin: 0; }
+        
+        .tweet-text { 
+            font-size: 18px; 
+            line-height: 1.4; 
+            margin-bottom: 16px; 
+            white-space: pre-wrap; 
+            color: var(--text-main); 
+            word-wrap: break-word;
+        }
+
+        /* GRID DE IMAGENS CORRIGIDO PARA BACKGROUNDS */
+        .image-grid { 
+            display: grid; 
+            gap: 4px; 
+            border-radius: 16px; 
+            overflow: hidden; 
+            border: 1px solid var(--border-color); 
+            width: 100%;
+            flex-grow: 1; 
+            min-height: 0; 
+        }
+        
+        .grid-1 { grid-template-columns: 1fr; }
+        .grid-2 { grid-template-columns: 1fr 1fr; }
+        .grid-3 { grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr; }
+        .grid-3 div:first-child { grid-row: span 2; } 
+        .grid-4 { grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr; }
+
+        /* Nova regra para os quadrados funcionarem como Imagens de Fundo */
+        .image-grid div { 
+            background-color: var(--border-color); 
+            background-size: cover; 
+            background-position: center; 
+            background-repeat: no-repeat;
+            width: 100%;
+            height: 100%;
+        }
+
+        .btn-theme { background: #1da1f2; color: white; border: none !important; font-weight: bold; cursor: pointer; }
+        .btn-download { background: #00ba7c; color: white; border: none !important; font-weight: bold; cursor: pointer; }
+    </style>
+</head>
+<body>
+
+    <div class="controles">
+        <h3>Configurações</h3>
+        <button class="btn-theme" onclick="toggleTheme()">Trocar Tema (Light/Dark)</button>
+        
+        <input type="text" id="in-nome" placeholder="Nome Exibido" oninput="update()">
+        <input type="text" id="in-handle" placeholder="@usuario" oninput="update()">
+        <textarea id="in-texto" rows="3" placeholder="Texto do post..." oninput="update()"></textarea>
+        
+        <label>Foto de Perfil:</label>
+        <input type="file" id="in-pfp" accept="image/*" onchange="loadFile(event, 'pfp-prev')">
+        
+        <label>Imagens do Post (Até 4):</label>
+        <input type="file" id="in-imgs" accept="image/*" multiple onchange="loadGrid(event)">
+        
+        <button class="btn-download" onclick="download()">Baixar Imagem 4:5</button>
+    </div>
+
+    <div id="export-area">
+        <div class="tweet-content">
+            <div class="header">
+                <img id="pfp-prev" src="data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=">
+                <div class="names">
+                    <p class="nome" id="out-nome">Nome Exibido</p>
+                    <p class="handle" id="out-handle">@usuario</p>
+                </div>
+            </div>
+            <div class="tweet-text" id="out-texto">O texto do seu post aparecerá aqui...</div>
+            <div id="grid-container" class="image-grid" style="display: none;"></div>
+        </div>
+    </div>
+
+    <script>
+        function update() {
+            document.getElementById('out-nome').innerText = document.getElementById('in-nome').value || "Nome Exibido";
+            document.getElementById('out-handle').innerText = document.getElementById('in-handle').value || "@usuario";
+            document.getElementById('out-texto').innerText = document.getElementById('in-texto').value || "O texto do seu post aparecerá aqui...";
+        }
+
+        function toggleTheme() {
+            const body = document.body;
+            if (body.getAttribute('data-theme') === 'dark') {
+                body.removeAttribute('data-theme');
+            } else {
+                body.setAttribute('data-theme', 'dark');
+            }
+        }
+
+        function loadFile(event, id) {
+            if(event.target.files.length > 0) {
+                const reader = new FileReader();
+                reader.onload = () => document.getElementById(id).src = reader.result;
+                reader.readAsDataURL(event.target.files[0]);
+            }
+        }
+
+        // LÓGICA ATUALIZADA: Agora injetamos a imagem no fundo (Background) da DIV
+        function loadGrid(event) {
+            const files = Array.from(event.target.files).slice(0, 4); 
+            const container = document.getElementById('grid-container');
+            
+            if (files.length === 0) {
+                container.style.display = 'none'; 
+                return;
+            }
+
+            container.style.display = 'grid'; 
+            container.innerHTML = '';
+            container.className = `image-grid grid-${files.length}`; 
+
+            files.forEach(file => {
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    const div = document.createElement('div');
+                    // Injeta a foto como background-image
+                    div.style.backgroundImage = `url('${e.target.result}')`;
+                    container.appendChild(div);
+                };
+                reader.readAsDataURL(file);
+            });
+        }
+
+        function download() {
+            const target = document.getElementById('export-area');
+            
+            target.classList.add('exportando');
+            
+            html2canvas(target, { 
+                scale: 2.5, 
+                useCORS: true,
+                backgroundColor: null 
+            }).then(canvas => {
+                const link = document.createElement('a');
+                link.download = 'post-estilo-twitter.png';
+                link.href = canvas.toDataURL('image/png');
+                link.click();
+                
+                target.classList.remove('exportando');
+            });
+        }
+    </script>
+</body>
+</html>
